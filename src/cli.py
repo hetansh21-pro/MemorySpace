@@ -1,9 +1,11 @@
 """
 MemorySpace Interactive CLI & Dashboard
+High-precision, pixel-perfect terminal UI for Linux memory monitoring and task protection.
 """
 
 import sys
 import os
+import re
 import time
 import argparse
 import subprocess
@@ -32,7 +34,44 @@ CYAN = "\033[36m"
 BLUE = "\033[34m"
 PURPLE = "\033[35m"
 GRAY = "\033[90m"
+DIM = "\033[2m"
 RESET = "\033[0m"
+
+
+def clean_human_scope_name(scope: str) -> str:
+    """
+    Converts ugly systemd scope names like:
+    'app-gnome-brave\\x2dbrowser-29203.scope' -> 'Brave Browser'
+    'app-antigravity-20809.scope' -> 'Antigravity'
+    'ptyxis-spawn-1702c9ca.scope' -> 'Terminal'
+    """
+    s = scope.replace("\\x2d", "-").replace("\\\\x2d", "-")
+    s = re.sub(r"\.scope$", "", s)
+    s = re.sub(r"-[0-9a-f]{4,}$", "", s)
+    s = re.sub(r"-[0-9]+$", "", s)
+    s = re.sub(r"^app-gnome-org\.gnome\.", "", s)
+    s = re.sub(r"^app-gnome-", "", s)
+    s = re.sub(r"^app-org\.[^.]+\.", "", s)
+    s = re.sub(r"^app-", "", s)
+    if s.startswith("ptyxis-spawn") or "terminal" in s:
+        return "Terminal"
+    return s.replace("-", " ").title()
+
+
+def get_zram_info() -> Dict[str, Any]:
+    """
+    Checks if ZRAM is active and returns size.
+    """
+    zram_path = Path("/sys/block/zram0")
+    if zram_path.exists():
+        try:
+            with open(zram_path / "disksize", "r") as f:
+                bytes_sz = int(f.read().strip())
+                gb_sz = round(bytes_sz / (1024**3), 2)
+                return {"active": True, "size_gb": gb_sz}
+        except Exception:
+            return {"active": True, "size_gb": 0.0}
+    return {"active": False, "size_gb": 0.0}
 
 
 def print_banner():
@@ -44,7 +83,7 @@ def print_banner():
     print(" |_|  |_|\\___|_| |_| |_|\\___/|_|   \\__, |____/| .__/ \\__,_|\\___\\___|")
     print("                                   |___/      |_|                   ")
     print(f"{RESET}  {BOLD}🛡️  Zero-Crash Memory Guard & RAM Optimizer for Linux{RESET}")
-    print(f"{GRAY}  ---------------------------------------------------------------{RESET}")
+    print(f"{CYAN}─────────────────────────────────────────────────────────────────{RESET}")
 
 
 def render_dashboard_view(clear_screen: bool = True):
@@ -56,70 +95,102 @@ def render_dashboard_view(clear_screen: bool = True):
     stats = get_memory_stats()
     daemon_ok = is_daemon_running()
     config = load_config()
+    zram = get_zram_info()
 
-    daemon_badge = f"{GREEN}● ACTIVE GUARD (Protecting Apps){RESET}" if daemon_ok else f"{YELLOW}○ STANDBY (Daemon Inactive){RESET}"
+    # Daemon Status
+    if daemon_ok:
+        daemon_badge = f"{GREEN}{BOLD}● ACTIVE GUARD{RESET} {GRAY}(Protecting running apps){RESET}"
+    else:
+        daemon_badge = f"{YELLOW}○ STANDBY{RESET} {GRAY}(Run option 6 to start background protection){RESET}"
     print(f" Daemon Service: {daemon_badge}")
 
-    # Status Message
+    # System Health
     status = stats["status"]
-    status_color = GREEN if status == "HEALTHY" else (YELLOW if status in ("ELEVATED", "HIGH_PRESSURE") else RED)
+    if status == "HEALTHY":
+        status_color = GREEN
+    elif status in ("ELEVATED", "HIGH_PRESSURE"):
+        status_color = YELLOW
+    else:
+        status_color = RED
     print(f" System Health:  {status_color}{BOLD}{status}{RESET} - {stats['status_message']}")
-    print("-" * 65)
+    print(f"{CYAN}─────────────────────────────────────────────────────────────────{RESET}")
 
-    # RAM Bar
+    # Physical RAM
     ram = stats["ram"]
-    ram_bar_len = 28
-    filled = int((ram["percent"] / 100) * ram_bar_len)
-    bar = "█" * filled + "░" * (ram_bar_len - filled)
+    bar_len = 26
+    filled = int((ram["percent"] / 100) * bar_len)
+    filled = max(0, min(bar_len, filled))
+    bar = "█" * filled + "░" * (bar_len - filled)
     ram_col = RED if ram["percent"] > 90 else (YELLOW if ram["percent"] > 80 else GREEN)
     print(f" {BOLD}Physical RAM:{RESET}   [{ram_col}{bar}{RESET}] {ram_col}{ram['percent']}%{RESET}")
     print(f"                 Used: {ram['used_gb']} GB / Total: {ram['total_gb']} GB (Avail: {ram['available_gb']} GB)")
 
-    # Swap Bar
+    # Swap & ZRAM
     swap = stats["swap"]
-    sw_filled = int((swap["percent"] / 100) * ram_bar_len)
-    sw_bar = "█" * sw_filled + "░" * (ram_bar_len - sw_filled)
-    print(f" {BOLD}Swap Memory:{RESET}    [{BLUE}{sw_bar}{RESET}] {swap['percent']}%")
-    print(f"                 Used: {swap['used_gb']} GB / Total: {swap['total_gb']} GB (Free: {swap['free_gb']} GB)")
+    sw_filled = int((swap["percent"] / 100) * bar_len)
+    sw_filled = max(0, min(bar_len, sw_filled))
+    sw_bar = "█" * sw_filled + "░" * (bar_len - sw_filled)
+    swap_label = "Swap / ZRAM:" if zram["active"] else "Swap Memory:"
+    print(f" {BOLD}{swap_label:<15}{RESET} [{BLUE}{sw_bar}{RESET}] {swap['percent']}%")
+    zram_tag = f" ({GREEN}ZRAM Active: {zram['size_gb']} GB Fast RAM{RESET})" if zram["active"] else ""
+    print(f"                 Used: {swap['used_gb']} GB / Total: {swap['total_gb']} GB (Free: {swap['free_gb']} GB){zram_tag}")
 
-    # PSI Pressure
+    # Kernel PSI Pressure
     psi = stats["psi"]
     print(f" {BOLD}Kernel PSI:{RESET}     10s Stall: {psi['some_avg10']}%  |  60s: {psi['some_avg60']}%  |  300s: {psi['some_avg300']}%")
-    print(f"                 {GRAY}(Ubuntu triggers oom-kill if 10s pressure > 50% for 20s){RESET}")
-    print("-" * 65)
+    print(f"                 {GRAY}(Ubuntu kills apps when 10s pressure > 50% for 20s){RESET}")
+    print(f"{CYAN}─────────────────────────────────────────────────────────────────{RESET}")
 
-    # Protected apps & scopes
+    # Guarded Apps (clean human-readable names)
     p_res = protect_all_configured_apps()
-    protected_apps = config.get("protected_apps", [])
-    print(f" {BOLD}Protected Config:{RESET} {', '.join(protected_apps[:7])} (+{max(0, len(protected_apps) - 7)} more)")
-    if p_res.get("currently_protected"):
-        scopes_str = ", ".join(p_res["currently_protected"][:3])
-        if len(p_res["currently_protected"]) > 3:
-            scopes_str += f" (+{len(p_res['currently_protected']) - 3} more)"
-        print(f" {BOLD}Active Guarded:{RESET}  {GREEN}{scopes_str}{RESET}")
-    print("-" * 65)
+    raw_scopes = p_res.get("currently_protected", [])
+    clean_names = []
+    seen = set()
+    for s in raw_scopes:
+        c = clean_human_scope_name(s)
+        if c and c not in seen:
+            seen.add(c)
+            clean_names.append(c)
 
-    # Top processes
-    print(f" {BOLD}{'PID':<7} {'APP NAME':<20} {'MEM (MB)':<10} {'RAM %':<7} {'GUARD STATUS':<15}{RESET}")
+    if clean_names:
+        display_apps = ", ".join(clean_names[:5])
+        if len(clean_names) > 5:
+            display_apps += f" (+{len(clean_names) - 5} more)"
+        print(f" {BOLD}Guarded Apps:{RESET}   {GREEN}{display_apps}{RESET}")
+        print(f"                 {GRAY}(Shielded from systemd-oomd with ManagedOOMPreference=omit){RESET}")
+    else:
+        print(f" {BOLD}Guarded Apps:{RESET}   {YELLOW}Scanning active applications...{RESET}")
+    print(f"{CYAN}─────────────────────────────────────────────────────────────────{RESET}")
+
+    # Top processes table
+    header = f" {BOLD}{'PID':<7} {'APPLICATION':<22} {'MEMORY':<11} {'RAM %':<7} {'STATUS':<12}{RESET}"
+    print(header)
     procs = get_top_processes(limit=6)
     for p in procs:
-        status_tag = f"{GREEN}🛡️ PROTECTED{RESET}" if p["protected"] else f"{GRAY}Normal{RESET}"
-        print(f" {p['pid']:<7} {p['name'][:18]:<20} {p['memory_mb']:<10} {p['memory_percent']:<7} {status_tag}")
-    print("-" * 65)
+        p_name = p["name"][:20]
+        p_mem = f"{p['memory_mb']} MB"
+        p_ram = f"{p['memory_percent']}%"
+        status_tag = f"{GREEN}{BOLD}● SHIELDED{RESET}" if p["protected"] else f"{GRAY}○ Normal{RESET}"
+        print(f" {p['pid']:<7} {p_name:<22} {p_mem:<11} {p_ram:<7} {status_tag}")
+    print(f"{CYAN}─────────────────────────────────────────────────────────────────{RESET}")
 
 
 def render_menu():
-    print(f"{CYAN}┌─────────────────────────────────────────────────────────────┐{RESET}")
-    print(f"{CYAN}│{RESET}  {BOLD}ACTIONS & CONTROLS:{RESET}                                         {CYAN}│{RESET}")
-    print(f"{CYAN}│{RESET}  {GREEN}[1]{RESET} ⚡ {BOLD}Manual Memory Boost{RESET} (Flush buffers & reclaim RAM)      {CYAN}│{RESET}")
-    print(f"{CYAN}│{RESET}  {GREEN}[2]{RESET} 🛡️ {BOLD}Protect an App{RESET} (Shield from systemd-oomd kill)         {CYAN}│{RESET}")
-    print(f"{CYAN}│{RESET}  {GREEN}[3]{RESET} 🔓 {BOLD}Unprotect an App{RESET} (Remove from shield list)            {CYAN}│{RESET}")
-    print(f"{CYAN}│{RESET}  {GREEN}[4]{RESET} 🚀 {BOLD}Boost RAM with ZRAM{RESET} (Double usable memory)             {CYAN}│{RESET}")
-    print(f"{CYAN}│{RESET}  {GREEN}[5]{RESET} 🌐 {BOLD}Launch Web Dashboard{RESET} (http://localhost:7890)          {CYAN}│{RESET}")
-    print(f"{CYAN}│{RESET}  {GREEN}[6]{RESET} 🔄 {BOLD}Toggle Background Daemon{RESET} (Start / Stop)              {CYAN}│{RESET}")
-    print(f"{CYAN}│{RESET}  {GREEN}[7]{RESET} 📡 {BOLD}Live Auto-Refresh Monitor{RESET} (htop style)                 {CYAN}│{RESET}")
-    print(f"{CYAN}│{RESET}  {RED}[0]{RESET} 🚪 {BOLD}Exit{RESET}                                                     {CYAN}│{RESET}")
-    print(f"{CYAN}└─────────────────────────────────────────────────────────────┘{RESET}")
+    zram = get_zram_info()
+    zram_desc = f"In-memory compression ({GREEN}Active: {zram['size_gb']} GB{RESET})" if zram["active"] else "In-memory compression (Double RAM)"
+
+    print(f"{CYAN}╭─────────────────────────────────────────────────────────────╮{RESET}")
+    print(f"{CYAN}│{RESET}  {BOLD}ACTIONS & CONTROLS{RESET}                                         {CYAN}│{RESET}")
+    print(f"{CYAN}╰─────────────────────────────────────────────────────────────╯{RESET}")
+    print(f"  {GREEN}{BOLD}[1]{RESET} ⚡ {BOLD}Manual Memory Boost{RESET}     {GRAY}Flush buffers & reclaim free RAM{RESET}")
+    print(f"  {GREEN}{BOLD}[2]{RESET} 🛡️  {BOLD}Protect Application{RESET}     {GRAY}Shield app from systemd-oomd kill{RESET}")
+    print(f"  {GREEN}{BOLD}[3]{RESET} 🔓 {BOLD}Unprotect App{RESET}           {GRAY}Remove from shield list{RESET}")
+    print(f"  {GREEN}{BOLD}[4]{RESET} 🚀 {BOLD}ZRAM Accelerator{RESET}        {GRAY}{zram_desc}{RESET}")
+    print(f"  {GREEN}{BOLD}[5]{RESET} 🌐 {BOLD}Web Dashboard{RESET}           {GRAY}Open live UI at http://localhost:7890{RESET}")
+    print(f"  {GREEN}{BOLD}[6]{RESET} 🔄 {BOLD}Daemon Service{RESET}          {GRAY}Toggle background active protection{RESET}")
+    print(f"  {GREEN}{BOLD}[7]{RESET} 📡 {BOLD}Live Monitor{RESET}            {GRAY}Real-time htop-style stream{RESET}")
+    print(f"  {RED}{BOLD}[0]{RESET} 🚪 {BOLD}Exit{RESET}                    {GRAY}Quit MemorySpace{RESET}")
+    print(f"{CYAN}─────────────────────────────────────────────────────────────{RESET}")
 
 
 def interactive_dashboard():
@@ -129,32 +200,28 @@ def interactive_dashboard():
         try:
             choice = input(f"{BOLD}Select an option [0-7] (or press Enter to refresh): {RESET}").strip()
         except (KeyboardInterrupt, EOFError):
-            print(f"\n{CYAN}Exiting MemorySpace. Stay protected! 👋{RESET}")
+            print(f"\n{CYAN}Exiting MemorySpace. Background guard continues protecting your tasks. 👋{RESET}\n")
             sys.exit(0)
 
         if not choice:
-            continue  # Just re-render and refresh
+            continue
 
         if choice == "1":
             # Manual Boost
-            print(f"\n{CYAN}⚡ Running aggressive memory boost...{RESET}")
+            print(f"\n{CYAN}⚡ Running memory boost & buffer flush...{RESET}")
             res = manual_boost_memory()
-            print(f"\n{GREEN}{BOLD}======================================================={RESET}")
-            print(f"{GREEN}{BOLD}🎉 MEMORY BOOST SUCCESSFUL!{RESET}")
-            print(f"{GREEN}{BOLD}======================================================={RESET}")
-            print(f" RAM Reclaimed:     {GREEN}{res['freed_mb']} MB{RESET}")
-            print(f" RAM Usage Now:     {res['before_used_gb']} GB ➔ {GREEN}{res['after_used_gb']} GB{RESET} ({res['percent_after']}%)")
-            print(f" Available Memory:  {GREEN}{res['available_gb']} GB{RESET}")
-            print(" Actions:")
+            print(f"\n{GREEN}{BOLD}✔ Memory Boost Complete!{RESET}")
+            print(f"  • RAM Reclaimed:     {GREEN}{res['freed_mb']} MB{RESET}")
+            print(f"  • RAM Usage Now:     {res['before_used_gb']} GB ➔ {GREEN}{res['after_used_gb']} GB{RESET} ({res['percent_after']}%)")
+            print(f"  • Available RAM:     {GREEN}{res['available_gb']} GB{RESET}")
             for act in res["actions"]:
-                print(f"  {GREEN}✔{RESET} {act}")
-            print(f"{GRAY}Running tasks and IDE are intact and running smoothly.{RESET}")
+                print(f"  • {GREEN}✔{RESET} {act}")
+            print(f"{GRAY}Active applications and IDE are running smoothly.{RESET}")
             input(f"\n{BOLD}Press Enter to return to Dashboard...{RESET}")
 
         elif choice == "2":
             # Protect an App
             config = load_config()
-            protected = [a.lower() for a in config.get("protected_apps", [])]
             top_procs = get_top_processes(limit=15)
             unprotected_cands = []
             seen = set()
@@ -169,7 +236,7 @@ def interactive_dashboard():
                 print(f"{GRAY}Top active applications currently unshielded:{RESET}")
                 for idx, c in enumerate(unprotected_cands[:5], 1):
                     print(f"  [{chr(96 + idx)}] {c}")
-            print(f"{GRAY}Or type any app/binary name (e.g. android-studio, code, blender, godot):{RESET}")
+            print(f"{GRAY}Or type any app/binary name (e.g. android-studio, blender, godot):{RESET}")
 
             try:
                 target = input(f"\nEnter choice: ").strip()
@@ -179,7 +246,6 @@ def interactive_dashboard():
             if not target:
                 continue
 
-            # Check if letter chosen
             selected_name = target
             if len(target) == 1 and target.isalpha():
                 idx = ord(target.lower()) - 97
@@ -221,16 +287,18 @@ def interactive_dashboard():
             input(f"\n{BOLD}Press Enter to return to Dashboard...{RESET}")
 
         elif choice == "4":
-            # ZRAM Check & Setup
+            # ZRAM Status & Setup
+            zram = get_zram_info()
             print(f"\n{BOLD}🚀 In-Memory ZRAM (Double RAM Accelerator):{RESET}")
-            # Check if zram is active
-            zram_active = os.path.exists("/dev/zram0")
-            if zram_active:
-                print(f"{GREEN}✔ ZRAM is already active on this system!{RESET}")
+            if zram["active"]:
+                print(f"{GREEN}✔ ZRAM is ALREADY ACTIVE and accelerating your system!{RESET}")
+                print(f"  • Compressed RAM size: {GREEN}{zram['size_gb']} GB{RESET}")
+                print(f"  • Algorithm: LZ4 (ultra-fast near-memory speeds)")
+                print(f"  • Your running tasks and compile jobs have tons of headroom.")
                 subprocess.run(["swapon", "--show"])
             else:
                 print(f"{YELLOW}ZRAM is not yet enabled.{RESET}")
-                print("Enabling ZRAM compresses RAM in memory with fast LZ4, turning 5.2GB RAM into ~9-10GB!")
+                print("Enabling ZRAM compresses RAM in memory with fast LZ4, effectively doubling usable RAM!")
                 fix_script = Path(__file__).resolve().parent.parent / "scripts" / "fix_ubuntu_oomd.sh"
                 ans = input(f"Would you like to run the automated setup now? (Requires sudo) [y/N]: ").strip().lower()
                 if ans in ("y", "yes"):
@@ -285,7 +353,7 @@ def interactive_dashboard():
 
 def cmd_status():
     render_dashboard_view(clear_screen=False)
-    print(f" {GRAY}Tip: Run 'mem' or 'memoryspace' for interactive menu, or 'mem boost' for instant RAM reclaim.{RESET}\n")
+    print(f" {GRAY}Tip: Type 'mem' to open the interactive control menu, or 'mem boost' for instant RAM reclaim.{RESET}\n")
 
 
 def cmd_monitor():
@@ -350,7 +418,6 @@ def main():
     args = parser.parse_args()
 
     if args.command is None:
-        # If run directly without arguments: open full interactive dashboard!
         if sys.stdin.isatty():
             interactive_dashboard()
         else:
@@ -363,7 +430,7 @@ def main():
         cmd_optimize()
     elif args.command == "protect":
         add_app_to_protection(args.app)
-        print(f"{GREEN}✔ Successfully added '{args.app}' to protected apps! MemorySpace will shield it from kills.{RESET}")
+        print(f"{GREEN}✔ Successfully shielded '{args.app}'! MemorySpace will prevent it from ever being killed.{RESET}")
     elif args.command == "unprotect":
         remove_app_from_protection(args.app)
         print(f"{YELLOW}✔ Removed '{args.app}' from protected apps list.{RESET}")
