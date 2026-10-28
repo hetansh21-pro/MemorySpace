@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 #  🧠 MemorySpace Universal 1-Line Installer
-#  Usage: curl -fsSL https://raw.githubusercontent.com/hetansh-patel/MemorySpace/main/install.sh | bash
+#  Usage: curl -fsSL https://raw.githubusercontent.com/hetansh21-pro/MemorySpace/main/install.sh | bash
 # ==============================================================================
 
 set -e
@@ -70,7 +70,7 @@ else
     echo "Updating existing installation..."
     git -C "$INSTALL_DIR" pull --quiet
   else
-    git clone --depth 1 https://github.com/hetansh-patel/MemorySpace.git "$INSTALL_DIR" --quiet
+    git clone --depth 1 https://github.com/hetansh21-pro/MemorySpace.git "$INSTALL_DIR" --quiet
   fi
   SOURCE_DIR="$INSTALL_DIR"
 fi
@@ -125,4 +125,4 @@ echo -e "  ${C_BOLD}memoryspace monitor${C_RESET}    → Real-time visual termin
 echo -e "  ${C_BOLD}memoryspace optimize${C_RESET}   → 1-click safe memory cleanup"
 echo -e "  ${C_BOLD}memoryspace web${C_RESET}        → Launch Web UI at http://localhost:7890"
 echo -e "  ${C_BOLD}memoryspace protect <app>${C_RESET} → Never allow <app> to be killed"
-echo -e "\nStar us on GitHub: ${C_PURPLE}https://github.com/hetansh-patel/MemorySpace${C_RESET}\n"
+echo -e "\nStar us on GitHub: ${C_PURPLE}https://github.com/hetansh21-pro/MemorySpace${C_RESET}\n"

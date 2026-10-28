@@ -49,12 +49,12 @@ Whenever memory stall pressure exceeds **50% for just 20 seconds**, Ubuntu's dae
 Install MemorySpace in seconds on any Linux machine (no root required for user protection):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hetansh-patel/MemorySpace/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/hetansh21-pro/MemorySpace/main/install.sh | bash
 ```
 
 *Or clone and run manually:*
 ```bash
-git clone https://github.com/hetansh-patel/MemorySpace.git
+git clone https://github.com/hetansh21-pro/MemorySpace.git
 cd MemorySpace
 ./install.sh
 ```
