@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MemorySpace - Intelligent Memory & Task Guard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon">🧠</div>
+        <div>
+          <h1>MemorySpace</h1>
+          <p class="subtitle">Intelligent RAM Optimizer & Running Task Protector</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div id="daemon-badge" class="badge badge-inactive">Daemon: Checking...</div>
+        <button id="optimize-btn" class="btn btn-primary" onclick="triggerOptimization()">
+          ⚡ Optimize Memory Now
+        </button>
+      </div>
+    </header>
+
+    <!-- Status Banner -->
+    <div id="status-banner" class="status-banner status-healthy">
+      <div class="status-icon">🛡️</div>
+      <div class="status-text">
+        <strong id="status-title">System Status: HEALTHY</strong>
+        <p id="status-msg">All running apps (Antigravity, Browsers, IDEs) are protected from sudden kills.</p>
+      </div>
+    </div>
+
+    <!-- Main Grid Cards -->
+    <div class="metrics-grid">
+      <!-- RAM Card -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Physical RAM</h3>
+          <span id="ram-summary" class="metric-val">-- / -- GB</span>
+        </div>
+        <div class="progress-bar-container">
+          <div id="ram-progress" class="progress-bar progress-green" style="width: 0%"></div>
+        </div>
+        <div class="card-details">
+          <div>Used: <strong id="ram-used">--</strong></div>
+          <div>Available: <strong id="ram-avail">--</strong></div>
+          <div>Usage: <strong id="ram-percent">0%</strong></div>
+        </div>
+      </div>
+
+      <!-- Swap Card -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Swap Space</h3>
+          <span id="swap-summary" class="metric-val">-- / -- GB</span>
+        </div>
+        <div class="progress-bar-container">
+          <div id="swap-progress" class="progress-bar progress-blue" style="width: 0%"></div>
+        </div>
+        <div class="card-details">
+          <div>Used: <strong id="swap-used">--</strong></div>
+          <div>Free: <strong id="swap-free">--</strong></div>
+          <div>Usage: <strong id="swap-percent">0%</strong></div>
+        </div>
+      </div>
+
+      <!-- PSI Memory Pressure Card -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Kernel PSI Pressure</h3>
+          <span id="psi-status-pill" class="pill pill-green">Low</span>
+        </div>
+        <div class="psi-metric">
+          <div class="psi-item">
+            <span class="psi-label">10s Stall</span>
+            <span id="psi-10s" class="psi-val">0.0%</span>
+          </div>
+          <div class="psi-item">
+            <span class="psi-label">60s Stall</span>
+            <span id="psi-60s" class="psi-val">0.0%</span>
+          </div>
+          <div class="psi-item">
+            <span class="psi-label">300s Stall</span>
+            <span id="psi-300s" class="psi-val">0.0%</span>
+          </div>
+        </div>
+        <p class="psi-hint">Linux Pressure Stall Info (PSI). Ubuntu kills apps when this stays above 50% for 20s.</p>
+      </div>
+    </div>
+
+    <!-- Protected Apps Section -->
+    <section class="section">
+      <div class="section-header">
+        <h2>Protected Applications (Will NEVER Be Killed)</h2>
+        <div class="add-app-box">
+          <input type="text" id="new-app-input" placeholder="e.g. antigravity, node, studio.sh" />
+          <button class="btn btn-secondary" onclick="addCustomProtectedApp()">+ Add App</button>
+        </div>
+      </div>
+      <div id="protected-apps-list" class="tags-container">
+        <!-- populated dynamically -->
+      </div>
+    </section>
+
+    <!-- Top Processes Table -->
+    <section class="section">
+      <div class="section-header">
+        <h2>Top Memory Consuming Processes</h2>
+        <span class="badge" id="proc-count">Showing top 15</span>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>PID</th>
+              <th>Application</th>
+              <th>Memory (MB)</th>
+              <th>RAM %</th>
+              <th>CPU %</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="processes-tbody">
+            <tr><td colspan="7" style="text-align:center; padding: 20px;">Loading live processes...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
