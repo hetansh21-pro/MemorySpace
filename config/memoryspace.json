@@ -1,13 +1,17 @@
 {
   "system_name": "MemorySpace",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "check_interval_seconds": 3,
-  "notification_cooldown_seconds": 90,
+  "notifications": {
+    "enabled": false,
+    "critical_only": true,
+    "cooldown_seconds": 1800
+  },
   "thresholds": {
-    "warning_percent": 80.0,
-    "optimize_percent": 88.0,
-    "critical_percent": 94.0,
-    "psi_pressure_threshold": 35.0
+    "warning_percent": 85.0,
+    "optimize_percent": 90.0,
+    "critical_percent": 95.0,
+    "psi_pressure_threshold": 45.0
   },
   "protected_apps": [
     "antigravity",

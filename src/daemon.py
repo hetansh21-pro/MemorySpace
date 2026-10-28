@@ -1,6 +1,7 @@
 """
 MemorySpace Background Daemon
-Monitors memory, auto-protects user apps from being killed, and manages pressure.
+Silently monitors memory, auto-protects user apps from being killed, and manages pressure.
+Operates in quiet mode so it protects without annoying the user with notifications.
 """
 
 import os
@@ -24,7 +25,6 @@ _running = True
 def _log(msg: str) -> None:
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     formatted = f"[{timestamp}] {msg}"
-    print(formatted)
     try:
         LOG_DIR.mkdir(parents=True, exist_ok=True)
         with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -48,25 +48,17 @@ def run_daemon() -> None:
     with open(PID_FILE, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
 
-    _log("MemorySpace daemon started successfully.")
-    send_desktop_notification(
-        "MemorySpace Active",
-        "MemorySpace is actively protecting your running tasks and IDE from being killed.",
-        urgency="low",
-        category="startup",
-        force=True,
-    )
+    _log("MemorySpace daemon started successfully in quiet background mode.")
 
     try:
         while _running:
             config = load_config()
             interval = config.get("check_interval_seconds", 3)
             thresholds = config.get("thresholds", {})
-            warn_p = thresholds.get("warning_percent", 80.0)
-            opt_p = thresholds.get("optimize_percent", 88.0)
-            crit_p = thresholds.get("critical_percent", 94.0)
+            opt_p = thresholds.get("optimize_percent", 90.0)
+            crit_p = thresholds.get("critical_percent", 95.0)
 
-            # 1. Protect all active scopes
+            # 1. Protect all active scopes from systemd-oomd
             prot_res = protect_all_configured_apps()
             if prot_res.get("newly_protected"):
                 for p in prot_res["newly_protected"]:
@@ -77,38 +69,25 @@ def run_daemon() -> None:
             ram_pct = stats["ram"]["percent"]
             psi_some = stats["psi"].get("some_avg10", 0.0)
 
+            # Critical threshold (> 95%): Silent optimization + optional emergency alert
             if ram_pct >= crit_p:
                 top_procs = get_top_processes(limit=3)
                 proc_summary = ", ".join([f"{p['name']} ({p['memory_mb']}MB)" for p in top_procs])
                 _log(f"CRITICAL: RAM at {ram_pct}%, PSI={psi_some}%. Top consumers: {proc_summary}")
+                optimize_memory_soft()
                 send_desktop_notification(
-                    "MemorySpace: Critical RAM!",
-                    f"RAM is at {ram_pct}%! Top apps: {proc_summary}. Antigravity is protected.",
+                    "MemorySpace: Critical Memory",
+                    f"RAM is at {ram_pct}%. Active tasks remain protected.",
                     urgency="critical",
                     category="critical",
                 )
-                optimize_memory_soft()
 
+            # High pressure threshold (> 90%): Optimize silently in background (No annoying popups)
             elif ram_pct >= opt_p:
-                _log(f"HIGH PRESSURE: RAM at {ram_pct}%, PSI={psi_some}%. Auto-optimizing...")
+                _log(f"HIGH PRESSURE: RAM at {ram_pct}%, PSI={psi_some}%. Auto-optimizing quietly...")
                 opt_res = optimize_memory_soft()
                 if opt_res.get("actions"):
                     _log("Optimization actions: " + "; ".join(opt_res["actions"]))
-                send_desktop_notification(
-                    "MemorySpace: High Memory",
-                    f"RAM at {ram_pct}%. Performing soft memory optimization without stopping tasks.",
-                    urgency="normal",
-                    category="warning",
-                )
-
-            elif ram_pct >= warn_p:
-                _log(f"ELEVATED: RAM at {ram_pct}%.")
-                send_desktop_notification(
-                    "MemorySpace: Memory High",
-                    f"RAM is at {ram_pct}%. MemorySpace is actively guarding running apps.",
-                    urgency="low",
-                    category="warning",
-                )
 
             time.sleep(interval)
     finally:

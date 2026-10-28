@@ -96,6 +96,7 @@ def render_dashboard_view(clear_screen: bool = True):
     daemon_ok = is_daemon_running()
     config = load_config()
     zram = get_zram_info()
+    notif_cfg = config.get("notifications", {})
 
     # Daemon Status
     if daemon_ok:
@@ -103,6 +104,13 @@ def render_dashboard_view(clear_screen: bool = True):
     else:
         daemon_badge = f"{YELLOW}○ STANDBY{RESET} {GRAY}(Run option 6 to start background protection){RESET}"
     print(f" Daemon Service: {daemon_badge}")
+
+    # Notifications Status
+    if notif_cfg.get("enabled", False):
+        notif_badge = f"{YELLOW}Enabled (Critical Only){RESET}" if notif_cfg.get("critical_only", True) else f"{GREEN}Enabled (All){RESET}"
+    else:
+        notif_badge = f"{GREEN}{BOLD}🔕 QUIET MODE{RESET} {GRAY}(Muted - 100% silent background protection){RESET}"
+    print(f" Notifications:  {notif_badge}")
 
     # System Health
     status = stats["status"]
@@ -178,6 +186,10 @@ def render_dashboard_view(clear_screen: bool = True):
 def render_menu():
     zram = get_zram_info()
     zram_desc = f"In-memory compression ({GREEN}Active: {zram['size_gb']} GB{RESET})" if zram["active"] else "In-memory compression (Double RAM)"
+    config = load_config()
+    notif_enabled = config.get("notifications", {}).get("enabled", False)
+    notif_label = "Enable Notifications" if not notif_enabled else "Mute Notifications (Quiet Mode)"
+    notif_icon = "🔔" if not notif_enabled else "🔕"
 
     print(f"{CYAN}╭─────────────────────────────────────────────────────────────╮{RESET}")
     print(f"{CYAN}│{RESET}  {BOLD}ACTIONS & CONTROLS{RESET}                                         {CYAN}│{RESET}")
@@ -189,6 +201,7 @@ def render_menu():
     print(f"  {GREEN}{BOLD}[5]{RESET} 🌐 {BOLD}Web Dashboard{RESET}           {GRAY}Open live UI at http://localhost:7890{RESET}")
     print(f"  {GREEN}{BOLD}[6]{RESET} 🔄 {BOLD}Daemon Service{RESET}          {GRAY}Toggle background active protection{RESET}")
     print(f"  {GREEN}{BOLD}[7]{RESET} 📡 {BOLD}Live Monitor{RESET}            {GRAY}Real-time htop-style stream{RESET}")
+    print(f"  {GREEN}{BOLD}[8]{RESET} {notif_icon} {BOLD}{notif_label:<23}{RESET} {GRAY}Stop / enable desktop popups{RESET}")
     print(f"  {RED}{BOLD}[0]{RESET} 🚪 {BOLD}Exit{RESET}                    {GRAY}Quit MemorySpace{RESET}")
     print(f"{CYAN}─────────────────────────────────────────────────────────────{RESET}")
 
@@ -198,9 +211,9 @@ def interactive_dashboard():
         render_dashboard_view(clear_screen=True)
         render_menu()
         try:
-            choice = input(f"{BOLD}Select an option [0-7] (or press Enter to refresh): {RESET}").strip()
+            choice = input(f"{BOLD}Select an option [0-8] (or press Enter to refresh): {RESET}").strip()
         except (KeyboardInterrupt, EOFError):
-            print(f"\n{CYAN}Exiting MemorySpace. Background guard continues protecting your tasks. 👋{RESET}\n")
+            print(f"\n{CYAN}Exiting MemorySpace. Background daemon continues guarding your tasks. 👋{RESET}\n")
             sys.exit(0)
 
         if not choice:
@@ -342,12 +355,28 @@ def interactive_dashboard():
             # Live Monitor Mode
             cmd_monitor()
 
+        elif choice == "8":
+            # Toggle Notifications / Quiet Mode
+            config = load_config()
+            if "notifications" not in config:
+                config["notifications"] = {}
+            current_state = config["notifications"].get("enabled", False)
+            new_state = not current_state
+            config["notifications"]["enabled"] = new_state
+            save_config(config)
+            if new_state:
+                print(f"\n{GREEN}✔ Desktop notifications enabled (critical alerts only).{RESET}")
+            else:
+                print(f"\n{GREEN}{BOLD}✔ QUIET MODE ACTIVATED! 🔕{RESET}")
+                print(f"MemorySpace will guard your apps 100% silently in background with ZERO popups.")
+            input(f"\n{BOLD}Press Enter to return to Dashboard...{RESET}")
+
         elif choice in ("0", "q", "exit"):
             print(f"\n{CYAN}Exiting MemorySpace. Background daemon continues guarding your tasks. Goodbye! 👋{RESET}\n")
             sys.exit(0)
 
         else:
-            print(f"{RED}Invalid option. Please choose 0 to 7.{RESET}")
+            print(f"{RED}Invalid option. Please choose 0 to 8.{RESET}")
             time.sleep(1)
 
 
@@ -375,6 +404,16 @@ def cmd_optimize():
     print(f"{GREEN}Done! Freed: {res['freed_mb']} MB. Physical RAM is currently at {stats['ram']['percent']}% ({stats['ram']['available_gb']} GB available).{RESET}")
 
 
+def cmd_quiet():
+    config = load_config()
+    if "notifications" not in config:
+        config["notifications"] = {}
+    config["notifications"]["enabled"] = False
+    save_config(config)
+    print(f"{GREEN}{BOLD}✔ MemorySpace is now in QUIET MODE (🔕 Muted)!{RESET}")
+    print(f"Background daemon will guard your applications silently with zero desktop popups.")
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="memoryspace",
@@ -391,6 +430,9 @@ def main():
     # boost / optimize
     subparsers.add_parser("boost", help="Instant manual memory boost & RAM reclaim")
     subparsers.add_parser("optimize", help="Safely free memory buffers and trim caches")
+
+    # quiet / mute
+    subparsers.add_parser("quiet", help="Mute all notifications (Quiet Mode)")
 
     # protect
     p_parser = subparsers.add_parser("protect", help="Add an application to protected list")
@@ -428,6 +470,8 @@ def main():
         cmd_monitor()
     elif args.command in ("optimize", "boost"):
         cmd_optimize()
+    elif args.command == "quiet":
+        cmd_quiet()
     elif args.command == "protect":
         add_app_to_protection(args.app)
         print(f"{GREEN}✔ Successfully shielded '{args.app}'! MemorySpace will prevent it from ever being killed.{RESET}")

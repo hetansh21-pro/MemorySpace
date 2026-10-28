@@ -1,6 +1,6 @@
 """
 MemorySpace Desktop Notification Manager
-Sends non-intrusive notifications with cooldowns.
+Provides silent, non-intrusive notification controls with long cooldowns.
 """
 
 import subprocess
@@ -19,11 +19,22 @@ def send_desktop_notification(
     force: bool = False,
 ) -> bool:
     """
-    Sends a desktop notification using notify-send with cooldown protection.
+    Sends a desktop notification using notify-send only if notifications are enabled.
+    Defaults to quiet mode to prevent annoying users while working.
     """
     global _last_notification_time
     config = load_config()
-    cooldown = config.get("notification_cooldown_seconds", 90)
+    notif_cfg = config.get("notifications", {})
+
+    # Check if notifications are enabled
+    if not notif_cfg.get("enabled", False) and not force:
+        return False
+
+    # If critical_only, block anything not marked critical
+    if notif_cfg.get("critical_only", True) and urgency != "critical" and not force:
+        return False
+
+    cooldown = notif_cfg.get("cooldown_seconds", 1800)
     now = time.time()
 
     if not force:

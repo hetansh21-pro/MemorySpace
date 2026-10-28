@@ -11,14 +11,18 @@ CONFIG_FILE = BASE_DIR / "config" / "memoryspace.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "system_name": "MemorySpace",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "check_interval_seconds": 3,
-    "notification_cooldown_seconds": 90,
+    "notifications": {
+        "enabled": False,  # Quiet mode by default - no annoying popups!
+        "critical_only": True,
+        "cooldown_seconds": 1800,  # 30 minutes cooldown
+    },
     "thresholds": {
-        "warning_percent": 80.0,
-        "optimize_percent": 88.0,
-        "critical_percent": 94.0,
-        "psi_pressure_threshold": 35.0,
+        "warning_percent": 85.0,
+        "optimize_percent": 90.0,
+        "critical_percent": 95.0,
+        "psi_pressure_threshold": 45.0,
     },
     "protected_apps": [
         "antigravity",
@@ -55,6 +59,11 @@ def load_config() -> Dict[str, Any]:
                 data = json.load(f)
                 config = DEFAULT_CONFIG.copy()
                 config.update(data)
+                # Ensure nested dicts are merged
+                if "notifications" in data:
+                    notif_cfg = DEFAULT_CONFIG["notifications"].copy()
+                    notif_cfg.update(data["notifications"])
+                    config["notifications"] = notif_cfg
                 return config
         except Exception:
             return DEFAULT_CONFIG.copy()
