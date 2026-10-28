@@ -31,9 +31,15 @@ RESET = "\033[0m"
 
 
 def print_banner():
-    print(f"{CYAN}{BOLD}================================================================={RESET}")
-    print(f"{CYAN}{BOLD}       🧠 MemorySpace - Intelligent Task & Memory Guard          {RESET}")
-    print(f"{CYAN}{BOLD}================================================================={RESET}")
+    print(f"{CYAN}{BOLD}")
+    print("  __  __                               ____                       ")
+    print(" |  \\/  | ___ _ __ ___   ___  _ __ _   / ___| _ __   __ _  ___ ___ ")
+    print(" | |\\/| |/ _ \\ '_ ` _ \\ / _ \\| '__| | |\\___ \\| '_ \\ / _` |/ __/ _ \\")
+    print(" | |  | |  __/ | | | | | (_) | |  |_| | ___) | |_) | (_| | (_|  __/")
+    print(" |_|  |_|\\___|_| |_| |_|\\___/|_|   \\__, |____/| .__/ \\__,_|\\___\\___|")
+    print("                                   |___/      |_|                   ")
+    print(f"{RESET}  {BOLD}🛡️  Zero-Crash Memory Guard & RAM Optimizer for Linux{RESET}")
+    print(f"{GRAY}  ---------------------------------------------------------------{RESET}")
 
 
 def cmd_status():

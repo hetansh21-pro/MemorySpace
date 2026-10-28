@@ -14,7 +14,7 @@
         <div class="brand-icon">🧠</div>
         <div>
           <h1>MemorySpace</h1>
-          <p class="subtitle">Intelligent RAM Optimizer & Running Task Protector</p>
+          <p class="subtitle">Intelligent RAM Optimizer & Zero-Crash Task Guard</p>
         </div>
       </div>
       <div class="header-actions">
@@ -30,7 +30,7 @@
       <div class="status-icon">🛡️</div>
       <div class="status-text">
         <strong id="status-title">System Status: HEALTHY</strong>
-        <p id="status-msg">All running apps (Antigravity, Browsers, IDEs) are protected from sudden kills.</p>
+        <p id="status-msg">All running apps (Antigravity, Browsers, IDEs, Terminals) are actively shielded from OOM kills.</p>
       </div>
     </div>
 
@@ -72,7 +72,7 @@
       <div class="card">
         <div class="card-header">
           <h3>Kernel PSI Pressure</h3>
-          <span id="psi-status-pill" class="pill pill-green">Low</span>
+          <span id="psi-status-pill" class="pill pill-green">Low Pressure</span>
         </div>
         <div class="psi-metric">
           <div class="psi-item">
@@ -92,12 +92,35 @@
       </div>
     </div>
 
+    <!-- Real-time Memory History Graph -->
+    <div class="card chart-card">
+      <div class="card-header">
+        <h3>Live Memory History (RAM %)</h3>
+        <span class="metric-val" id="chart-latest-val">Live 60s stream</span>
+      </div>
+      <div class="chart-container">
+        <svg id="live-chart" viewBox="0 0 600 120" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.5"/>
+              <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.0"/>
+            </linearGradient>
+          </defs>
+          <path id="chart-area" d="" fill="url(#chartGrad)"></path>
+          <path id="chart-line" d="" fill="none" stroke="#38bdf8" stroke-width="2.5"></path>
+        </svg>
+      </div>
+    </div>
+
     <!-- Protected Apps Section -->
     <section class="section">
       <div class="section-header">
-        <h2>Protected Applications (Will NEVER Be Killed)</h2>
+        <div>
+          <h2>Protected Applications</h2>
+          <p class="subtitle" style="margin-top: 4px;">These applications will NEVER be force-closed or killed by systemd-oomd.</p>
+        </div>
         <div class="add-app-box">
-          <input type="text" id="new-app-input" placeholder="e.g. antigravity, node, studio.sh" />
+          <input type="text" id="new-app-input" placeholder="e.g. android-studio, node" onkeydown="if(event.key==='Enter')addCustomProtectedApp()" />
           <button class="btn btn-secondary" onclick="addCustomProtectedApp()">+ Add App</button>
         </div>
       </div>
@@ -109,8 +132,13 @@
     <!-- Top Processes Table -->
     <section class="section">
       <div class="section-header">
-        <h2>Top Memory Consuming Processes</h2>
-        <span class="badge" id="proc-count">Showing top 15</span>
+        <div>
+          <h2>Active Processes & Resource Consumption</h2>
+          <p class="subtitle" style="margin-top: 4px;">Monitor memory hogs and toggle process shield protection.</p>
+        </div>
+        <div class="search-box">
+          <input type="text" id="proc-search" placeholder="Filter processes..." oninput="filterProcesses()" />
+        </div>
       </div>
       <div class="table-container">
         <table class="data-table">
@@ -118,10 +146,10 @@
             <tr>
               <th>PID</th>
               <th>Application</th>
-              <th>Memory (MB)</th>
+              <th>Memory</th>
               <th>RAM %</th>
               <th>CPU %</th>
-              <th>Status</th>
+              <th>Guard Status</th>
               <th>Action</th>
             </tr>
           </thead>

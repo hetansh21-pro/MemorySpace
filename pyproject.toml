@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memoryspace"
+version = "1.0.0"
+description = "Intelligent Linux Memory Guard, OOM Killer Shield & RAM Optimizer"
+readme = "README.md"
+authors = [{ name = "Hetansh Patel" }]
+license = { text = "MIT" }
+requires-python = ">=3.8"
+keywords = ["linux", "memory", "oom", "systemd", "performance", "optimizer", "ram", "cli", "dashboard"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "psutil>=5.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/hetansh-patel/MemorySpace"
+Repository = "https://github.com/hetansh-patel/MemorySpace"
+Issues = "https://github.com/hetansh-patel/MemorySpace/issues"
+
+[project.scripts]
+memoryspace = "src.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "config*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.html", "*.css", "*.js", "*.sh"]
