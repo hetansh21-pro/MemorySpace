@@ -83,9 +83,9 @@ When RAM usage climbs over 85%, MemorySpace safely syncs dirty page buffers (`os
 
 ---
 
-## 🖥️ Terminal Interface
+## 🖥️ Interactive Terminal Dashboard
 
-Check memory and protected tasks anytime with `memoryspace status`:
+Simply type **`mem`** (or `memoryspace`) in any terminal and hit **Enter**:
 
 ```text
   __  __                               ____                       
@@ -96,23 +96,43 @@ Check memory and protected tasks anytime with `memoryspace status`:
                                    |___/      |_|                   
   🛡️  Zero-Crash Memory Guard & RAM Optimizer for Linux
   ---------------------------------------------------------------
- Daemon Service: ● ACTIVE GUARD
+ Daemon Service: ● ACTIVE GUARD (Protecting Apps)
  System Health:  HEALTHY - Memory healthy. Running tasks running smoothly.
 -----------------------------------------------------------------
- Physical RAM:   [████████████░░░░░░░░░░░░░░░░░░] 38.2%
-                 Used: 1.99 GB / Total: 5.22 GB (Avail: 3.23 GB)
- Swap Memory:    [█████░░░░░░░░░░░░░░░░░░░░░░░░░] 18.2%
+ Physical RAM:   [███████████░░░░░░░░░░░░░░░░░] 41.1%
+                 Used: 2.15 GB / Total: 5.22 GB (Avail: 3.08 GB)
+ Swap Memory:    [█████░░░░░░░░░░░░░░░░░░░░░░░] 18.2%
                  Used: 0.73 GB / Total: 4.0 GB (Free: 3.27 GB)
  Kernel PSI:     10s Stall: 0.0%  |  60s: 0.0%  |  300s: 0.0%
 -----------------------------------------------------------------
- Protected Apps: antigravity, brave, chrome, chromium, firefox, code, cursor...
- Active Scopes Guarded: app-antigravity.scope, app-gnome-brave.scope
+ Protected Config: antigravity, brave, chrome, chromium, firefox, code (+12 more)
+ Active Guarded:  app-antigravity.scope, app-gnome-brave.scope
 -----------------------------------------------------------------
- PID      APP NAME               MEM (MB)     RAM %    STATUS         
- 21151    language_server        517.1        9.7      🛡️ PROTECTED
- 29212    brave                  354.3        6.6      🛡️ PROTECTED
- 21337    antigravity            294.9        5.5      🛡️ PROTECTED
+ PID     APP NAME             MEM (MB)   RAM %   GUARD STATUS   
+ 21151   language_server      445.4      8.3     🛡️ PROTECTED
+ 29212   brave                354.7      6.6     🛡️ PROTECTED
+ 21337   antigravity          345.8      6.5     🛡️ PROTECTED
+-----------------------------------------------------------------
+┌─────────────────────────────────────────────────────────────┐
+│  ACTIONS & CONTROLS:                                        │
+│  [1] ⚡ Manual Memory Boost (Flush buffers & reclaim RAM)    │
+│  [2] 🛡️ Protect an App (Shield from systemd-oomd kill)       │
+│  [3] 🔓 Unprotect an App (Remove from shield list)          │
+│  [4] 🚀 Boost RAM with ZRAM (Double usable memory)           │
+│  [5] 🌐 Launch Web Dashboard (http://localhost:7890)        │
+│  [6] 🔄 Toggle Background Daemon (Start / Stop)            │
+│  [7] 📡 Live Auto-Refresh Monitor (htop style)               │
+│  [0] 🚪 Exit                                                │
+└─────────────────────────────────────────────────────────────┘
+Select an option [0-7] (or press Enter to refresh): 
 ```
+
+### ⚡ Quick Shortcut Commands
+- `mem` → Open interactive terminal dashboard
+- `mem boost` → Instant manual memory reclaim
+- `mem status` → Instant memory snapshot without interactive menu
+- `mem monitor` → Live streaming monitor (htop style)
+- `mem web` → Open web dashboard at [http://localhost:7890](http://localhost:7890)
 
 ---
 

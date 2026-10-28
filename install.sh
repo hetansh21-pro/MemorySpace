@@ -76,10 +76,12 @@ else
 fi
 
 # Step 3: Global Symlink Setup
-echo -e "\n${C_CYAN}[3/5] Setting up global CLI binary...${C_RESET}"
+echo -e "\n${C_CYAN}[3/5] Setting up global CLI binary (memoryspace & mem)...${C_RESET}"
 mkdir -p "$HOME/.local/bin"
 chmod +x "$SOURCE_DIR/bin/memoryspace"
 ln -sf "$SOURCE_DIR/bin/memoryspace" "$HOME/.local/bin/memoryspace"
+ln -sf "$SOURCE_DIR/bin/memoryspace" "$HOME/.local/bin/mem"
+ln -sf "$SOURCE_DIR/bin/memoryspace" "$HOME/.local/bin/msp"
 
 # Ensure ~/.local/bin is in PATH
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then

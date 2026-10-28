@@ -17,8 +17,10 @@ rm -f "$HOME/.config/systemd/user/memoryspace.service"
 rm -f "$HOME/.config/systemd/user/default.target.wants/memoryspace.service"
 systemctl --user daemon-reload 2>/dev/null || true
 
-# 2. Remove symlink
+# 2. Remove symlinks
 rm -f "$HOME/.local/bin/memoryspace"
+rm -f "$HOME/.local/bin/mem"
+rm -f "$HOME/.local/bin/msp"
 
 # 3. Remove state
 rm -rf "$HOME/.local/state/memoryspace"

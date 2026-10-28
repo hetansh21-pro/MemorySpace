@@ -41,6 +41,8 @@ Issues = "https://github.com/hetansh-patel/MemorySpace/issues"
 
 [project.scripts]
 memoryspace = "src.cli:main"
+mem = "src.cli:main"
+msp = "src.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
